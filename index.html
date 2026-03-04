@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>北捷模擬器轉換器</title>
+    <style>
+        :root { --primary-color: #0084ff; --bg-color: #f4f7f9; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; position: relative; }
+        h2 { margin-top: 0; color: #333; font-size: 1.5rem; }
+        .hint { font-size: 0.9rem; color: #666; margin-bottom: 10px; text-align: left; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; transition: border-color 0.3s; }
+        input:focus { border-color: var(--primary-color); outline: none; }
+        button { width: 100%; padding: 12px; background-color: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:active { transform: scale(0.98); }
+        
+        #result-area { margin-top: 20px; display: none; border-radius: 8px; padding: 15px; background: #f8f9fa; border: 1px dashed #ccc; }
+        .id-display { font-size: 24px; font-weight: bold; color: #222; margin: 10px 0; display: block; }
+        .copy-btn { background-color: #28a745; margin-top: 5px; font-size: 14px; padding: 8px; width: auto; display: inline-block; min-width: 120px; }
+        .status-msg { font-size: 14px; color: #666; margin-top: 10px; min-height: 20px; }
+        
+        footer { margin-top: 25px; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; padding-top: 15px; }
+        .team-name { color: #555; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>北捷模擬器轉換器</h2>
+    <div class="hint">請輸入玩家名稱（例如：@roblox）：</div>
+    <input type="text" id="username" placeholder="@使用者名稱" spellcheck="false">
+    <button onclick="lookup()">查詢 ID</button>
+    
+    <div id="result-area">
+        <span style="font-size: 14px; color: #666;">轉換後的 ID：</span>
+        <span id="id-value" class="id-display">----</span>
+        <button class="copy-btn" onclick="copyId()">點擊複製 ID</button>
+    </div>
+    
+    <div id="status" class="status-msg"></div>
+
+    <footer>
+        開發團隊：<span class="team-name">元界創想 is Gemini</span>
+    </footer>
+</div>
+
+<script>
+    async function lookup() {
+        let username = document.getElementById('username').value.trim();
+        const resultArea = document.getElementById('result-area');
+        const idValue = document.getElementById('id-value');
+        const status = document.getElementById('status');
+
+        // 自動處理 @ 符號
+        if (username.startsWith('@')) {
+            username = username.substring(1);
+        }
+
+        if (!username) {
+            status.innerText = "❌ 請輸入名稱！";
+            status.style.color = "#d9534f";
+            resultArea.style.display = 'none';
+            return;
+        }
+
+        status.innerText = "正在連線至 Roblox 伺服器...";
+        status.style.color = "#666";
+        resultArea.style.display = 'none';
+
+        // 使用 corsproxy.io 轉發請求，解決手遊開發環境的 CORS 問題
+        const targetUrl = 'https://users.roblox.com/v1/usernames/users';
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+        try {
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    usernames: [username],
+                    excludeBannedUsers: false
+                })
+            });
+
+            if (!response.ok) throw new Error("網路請求失敗");
+
+            const data = await response.json();
+
+            if (data.data && data.data.length > 0) {
+                const userId = data.data[0].id;
+                idValue.innerText = userId;
+                resultArea.style.display = 'block';
+                status.innerText = "✅ 查詢成功";
+                status.style.color = "#28a745";
+            } else {
+                status.innerText = "❌ 找不到該玩家，請檢查拼字。";
+                status.style.color = "#d9534f";
+            }
+        } catch (err) {
+            console.error(err);
+            status.innerText = "⚠️ 請求被攔截。請確保網路連線正常。";
+            status.style.color = "#d9534f";
+        }
+    }
+
+    function copyId() {
+        const idText = document.getElementById('id-value').innerText;
+        
+        // 相容性較高的複製方法
+        const tempInput = document.createElement("input");
+        tempInput.value = idText;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempInput);
+
+        const btn = document.querySelector('.copy-btn');
+        const originalText = btn.innerText;
+        btn.innerText = "✅ 已複製！";
+        btn.style.backgroundColor = "#1e7e34";
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.backgroundColor = "#28a745";
+        }, 2000);
+    }
+</script>
+
+</body>
+</html>
+
